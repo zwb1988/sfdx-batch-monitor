@@ -1,0 +1,436 @@
+:root {
+  --radius: 8px;
+  --space: 1rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: var(--space) 1.5rem;
+}
+
+.header-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.theme-switcher {
+  flex-shrink: 0;
+}
+
+.theme-toggle {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.theme-toggle:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.main {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.control-group-right {
+  margin-left: auto;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.control-group label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.control-group select,
+.control-group input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9375rem;
+  min-width: 200px;
+}
+
+.control-group select:focus,
+.control-group input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.control-group input[type="number"] {
+  width: 6ch;
+}
+
+.control-group select:disabled,
+.control-group input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status-filters:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status-filters:disabled .status-checkbox-label {
+  cursor: not-allowed;
+}
+
+.control-group button {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+
+.control-group button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.control-group button:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.control-group button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.control-group button:disabled:hover {
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.control-group button.btn-icon {
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0.4rem;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.filters-section {
+  margin-bottom: 1.5rem;
+}
+
+.status-filters {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+}
+
+.status-filters legend {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  padding: 0 0.25rem;
+}
+
+.status-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+}
+
+.status-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.status-checkbox-label input {
+  margin-right: 0.25rem;
+}
+
+.status-checkbox-label input[type="checkbox"],
+.timezone-option-label input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+.table-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.status-message {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.status-message.loading {
+  color: var(--accent);
+}
+
+.status-message.error {
+  color: var(--error);
+}
+
+.timezone-option {
+  padding: 0 1rem 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.timezone-option-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.table-header-actions {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.refresh-btn {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.refresh-btn:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.timezone-option-label {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.timezone-option-label input {
+  margin-right: 0.35rem;
+}
+
+.timezone-display {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.jobs-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.jobs-table th,
+.jobs-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.jobs-table th {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  background: var(--table-header-bg);
+}
+
+.jobs-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.jobs-table th.sortable:hover {
+  color: var(--accent);
+}
+
+.jobs-table th.sortable::after {
+  content: " ⇅";
+  opacity: 0.4;
+  font-size: 0.7em;
+}
+
+.jobs-table th.sort-asc::after {
+  content: " ↑";
+  opacity: 1;
+}
+
+.jobs-table th.sort-desc::after {
+  content: " ↓";
+  opacity: 1;
+}
+
+.jobs-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.jobs-table tbody tr:nth-child(even) {
+  background: var(--table-row-alt);
+}
+
+.jobs-table td {
+  font-size: 0.875rem;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-badge.completed {
+  background: rgba(63, 185, 80, 0.2);
+  color: var(--success);
+}
+
+.status-badge.processing,
+.status-badge.preparing,
+.status-badge.queued {
+  background: rgba(210, 153, 34, 0.2);
+  color: var(--warning);
+}
+
+.status-badge.failed,
+.status-badge.aborted {
+  background: rgba(248, 81, 73, 0.2);
+  color: var(--error);
+}
+
+.status-badge.holding {
+  background: rgba(139, 148, 158, 0.2);
+  color: var(--text-muted);
+}
+
+/* Progress column: circular ring + % */
+.progress-cell {
+  vertical-align: middle;
+}
+
+.progress-cell .progress-na {
+  color: var(--text-muted);
+}
+
+.progress-ring {
+  --size: 44px;
+  --stroke: 4px;
+  --progress: 0;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--success) 0deg calc(var(--progress) * 3.6deg),
+    var(--border) calc(var(--progress) * 3.6deg) 360deg
+  );
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.progress-ring::before {
+  content: "";
+  position: absolute;
+  inset: var(--stroke);
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.progress-value {
+  position: relative;
+  z-index: 1;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--success);
+  min-width: 2.5ch;
+  text-align: center;
+}
+
+.footer {
+  margin-top: 2rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.footer-copyright {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+}

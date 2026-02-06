@@ -1,0 +1,20 @@
+{
+  "name": "sfdx-batch-monitor",
+  "version": "1.0.0",
+  "description": "Monitor Salesforce batch jobs via sf CLI with a web UI",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "lint": "eslint ."
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "eslint-config-standard": "^17.1.0"
+  }
+}

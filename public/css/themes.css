@@ -1,0 +1,35 @@
+/**
+ * Theme variables only. No layout or component styles.
+ * Toggle theme by setting data-theme="dark" | "light" on <html>.
+ */
+
+/* Dark theme (default) */
+:root,
+[data-theme="dark"] {
+  --bg: #0f1419;
+  --surface: #1a2332;
+  --border: #2d3a4d;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --accent: #58a6ff;
+  --success: #3fb950;
+  --warning: #d29922;
+  --error: #f85149;
+  --table-header-bg: rgba(0, 0, 0, 0.2);
+  --table-row-alt: rgba(0, 0, 0, 0.1);
+}
+
+/* Light theme */
+[data-theme="light"] {
+  --bg: #f6f8fa;
+  --surface: #ffffff;
+  --border: #d0d7de;
+  --text: #1f2328;
+  --text-muted: #656d76;
+  --accent: #0969da;
+  --success: #1a7f37;
+  --warning: #9a6700;
+  --error: #cf222e;
+  --table-header-bg: rgba(0, 0, 0, 0.04);
+  --table-row-alt: rgba(0, 0, 0, 0.02);
+}
