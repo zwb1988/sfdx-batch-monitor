@@ -48,8 +48,11 @@ router.get('/batch-jobs', async (req, res, next) => {
   }
   const options = { jobId: jobId || undefined, apexClassNameSearch: search || undefined, statuses, limit }
   try {
-    const jobs = await sfCliService.getBatchJobs(targetOrg, options)
-    res.json({ jobs })
+    const [jobs, instanceUrl] = await Promise.all([
+      sfCliService.getBatchJobs(targetOrg, options),
+      sfCliService.getOrgInstanceUrl(targetOrg)
+    ])
+    res.json({ jobs, instanceUrl: instanceUrl || null })
   } catch (err) {
     err.statusCode = 500
     next(err)

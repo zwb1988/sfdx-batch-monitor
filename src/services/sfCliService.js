@@ -5,7 +5,7 @@ const { DEFAULT_SOQL_LIMIT, MAX_SOQL_LIMIT } = constants
 
 const execFileAsync = promisify(execFile)
 
-const BASE_SELECT = 'SELECT Id, ApexClass.Name, JobType, JobItemsProcessed, TotalJobItems, Status, CreatedDate, CompletedDate FROM AsyncApexJob'
+const BASE_SELECT = 'SELECT Id, ApexClassId, ApexClass.Name, CreatedDate, CreatedById, CompletedDate, JobType, Status, ExtendedStatus, MethodName, JobItemsProcessed, TotalJobItems, NumberOfErrors, LastProcessed, LastProcessedOffset, ParentJobId FROM AsyncApexJob'
 const DEFAULT_STATUSES = ['Processing', 'Preparing', 'Queued', 'Failed']
 
 const TARGET_ORG_REGEX = /^[a-zA-Z0-9_.@-]+$/
@@ -104,9 +104,14 @@ function parseOrgList (stdout) {
   return { orgs }
 }
 
+function toCamelCase (str) {
+  if (typeof str !== 'string' || !str) return str
+  return str.charAt(0).toLowerCase() + str.slice(1).replace(/_(.)/g, (_, c) => c.toUpperCase())
+}
+
 function normalizeBatchJob (record) {
   const apexClass = record.ApexClass || {}
-  return {
+  const base = {
     id: record.Id || null,
     apexClassName: apexClass.Name || record.ApexClassName || '—',
     jobType: record.JobType || '—',
@@ -116,6 +121,23 @@ function normalizeBatchJob (record) {
     startedAt: record.CreatedDate || null,
     completedAt: record.CompletedDate || null
   }
+  const passthrough = {
+    apexClassId: record.ApexClassId,
+    createdById: record.CreatedById,
+    extendedStatus: record.ExtendedStatus,
+    methodName: record.MethodName,
+    numberOfErrors: record.NumberOfErrors,
+    lastProcessed: record.LastProcessed,
+    lastProcessedOffset: record.LastProcessedOffset,
+    parentJobId: record.ParentJobId
+  }
+  const result = { ...base, ...passthrough }
+  for (const key of Object.keys(record)) {
+    if (key === 'attributes' || key === 'ApexClass') continue
+    const camel = toCamelCase(key)
+    if (!(camel in result) && record[key] !== undefined) result[camel] = record[key]
+  }
+  return result
 }
 
 function parseBatchJobsResult (stdout) {
@@ -138,6 +160,23 @@ async function listOrgs () {
   })
   const output = stderr && !stdout ? stderr : stdout
   return parseOrgList(output)
+}
+
+async function getOrgInstanceUrl (targetOrg) {
+  if (!validateTargetOrg(targetOrg)) {
+    return null
+  }
+  const args = ['org', 'display', '--target-org', targetOrg.trim(), '--json']
+  try {
+    const { stdout, stderr } = await runSf(args)
+    const output = stderr && !stdout ? stderr : stdout
+    const data = JSON.parse(output)
+    const result = data.result || data
+    const url = result.instanceUrl || result.instance_url
+    return typeof url === 'string' && url.trim() ? url.trim().replace(/\/+$/, '') : null
+  } catch (_) {
+    return null
+  }
 }
 
 async function getBatchJobs (targetOrg, options = {}) {
@@ -163,6 +202,7 @@ async function getBatchJobs (targetOrg, options = {}) {
 module.exports = {
   listOrgs,
   getBatchJobs,
+  getOrgInstanceUrl,
   validateTargetOrg,
   validateJobId
 }

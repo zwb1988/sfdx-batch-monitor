@@ -12,6 +12,9 @@ const themeToggle = document.getElementById('theme-toggle')
 const showLocalTzCheckbox = document.getElementById('show-local-tz')
 const timezoneDisplay = document.getElementById('timezone-display')
 const limitInput = document.getElementById('limit-input')
+const batchDetailOverlay = document.getElementById('batch-detail-overlay')
+const batchDetailContent = document.getElementById('batch-detail-content')
+const modalCloseBtn = batchDetailOverlay && batchDetailOverlay.querySelector('.modal-close')
 
 const THEME_STORAGE_KEY = 'sf-batch-monitor-theme'
 const MIN_INTERVAL = 1
@@ -25,6 +28,8 @@ let pollTimer = null
 let requestInFlight = false
 let lastRefreshedAt = null
 let jobsCache = []
+let lastInstanceUrl = null
+let currentBatchDetailJob = null
 let sortKey = 'startedAt'
 let sortDir = 'desc'
 
@@ -200,8 +205,12 @@ function renderJobs (jobs) {
     const progressCell = progress != null
       ? '<td class="progress-cell"><div class="progress-ring" style="--progress: ' + progress + '" aria-label="' + progress + '%"><span class="progress-value">' + progress + '%</span></div></td>'
       : '<td class="progress-cell"><span class="progress-na">—</span></td>'
+    const batchId = job.id ? String(job.id) : '—'
+    const batchIdCell = job.id
+      ? '<button type="button" class="batch-id-trigger" data-job-id="' + escapeHtml(job.id) + '" title="View batch details">' + escapeHtml(batchId) + '</button>'
+      : escapeHtml(batchId)
     tr.innerHTML =
-      '<td>' + escapeHtml(String(job.id || '—')) + '</td>' +
+      '<td>' + batchIdCell + '</td>' +
       '<td>' + escapeHtml(String(job.apexClassName)) + '</td>' +
       '<td>' + escapeHtml(String(job.jobType)) + '</td>' +
       '<td>' + escapeHtml(String(job.jobItemsProcessed)) + '</td>' +
@@ -225,6 +234,94 @@ function updateSortIndicators () {
       th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc')
     }
   })
+}
+
+var BATCH_DETAIL_LABELS = {
+  id: 'Batch ID',
+  apexClassName: 'Apex Class Name',
+  apexClassId: 'Apex Class ID',
+  jobType: 'Job Type',
+  status: 'Status',
+  jobItemsProcessed: 'Job Items Processed',
+  totalJobItems: 'Total Job Items',
+  startedAt: 'Started',
+  completedAt: 'Completed',
+  createdById: 'Created By ID',
+  extendedStatus: 'Extended Status',
+  methodName: 'Method Name',
+  numberOfErrors: 'Number Of Errors',
+  lastProcessed: 'Last Processed',
+  lastProcessedOffset: 'Last Processed Offset',
+  parentJobId: 'Parent Job ID'
+}
+
+var BATCH_DETAIL_ORDER = [
+  'id', 'apexClassName', 'apexClassId', 'jobType', 'status', 'extendedStatus',
+  'jobItemsProcessed', 'totalJobItems', 'numberOfErrors', 'lastProcessed', 'lastProcessedOffset',
+  'methodName', 'startedAt', 'completedAt', 'createdById', 'parentJobId'
+]
+
+function formatBatchDetailValue (key, value, job) {
+  if (value === undefined || value === null || value === '') return '—'
+  if (key === 'status') return value
+  if (key === 'startedAt' || key === 'completedAt') {
+    const useUtc = !showLocalTzCheckbox || !showLocalTzCheckbox.checked
+    return formatDate(value, useUtc)
+  }
+  if (key === 'id' || key === 'apexClassId' || key === 'createdById' || key === 'parentJobId') return String(value)
+  return String(value)
+}
+
+function openBatchDetailModal (job) {
+  if (!batchDetailOverlay || !batchDetailContent || !job) return
+  const progress = getProgress(job)
+  const statusCls = statusClass(job.status)
+  const seen = new Set()
+  const rows = []
+  for (const key of BATCH_DETAIL_ORDER) {
+    if (!(key in job)) continue
+    seen.add(key)
+    const label = BATCH_DETAIL_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase())
+    const raw = job[key]
+    let value = formatBatchDetailValue(key, raw, job)
+    if (value === '—' && raw !== undefined && raw !== null && raw !== '') value = String(raw)
+    rows.push({ key, label, value, isStatus: key === 'status' })
+  }
+  for (const key of Object.keys(job)) {
+    if (seen.has(key)) continue
+    const label = BATCH_DETAIL_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase())
+    const raw = job[key]
+    let value = formatBatchDetailValue(key, raw, job)
+    if (value === '—' && raw !== undefined && raw !== null && raw !== '') value = String(raw)
+    rows.push({ key, label, value, isStatus: key === 'status' })
+  }
+  const progressStr = progress != null ? progress + '%' : '—'
+  const totalIdx = rows.findIndex((r) => r.key === 'totalJobItems')
+  if (totalIdx >= 0) {
+    rows.splice(totalIdx + 1, 0, { key: 'progress', label: 'Progress', value: progressStr, isStatus: false })
+  } else {
+    rows.push({ key: 'progress', label: 'Progress', value: progressStr, isStatus: false })
+  }
+  let html = '<ul class="batch-detail-list">'
+  for (const row of rows) {
+    const valueContent = row.isStatus && row.value !== '—'
+      ? '<span class="status-badge ' + statusCls + '">' + escapeHtml(String(row.value)) + '</span>'
+      : escapeHtml(String(row.value))
+    html += '<li><span class="batch-detail-label">' + escapeHtml(row.label) + '</span><span class="batch-detail-value">' + valueContent + '</span></li>'
+  }
+  html += '</ul>'
+  batchDetailContent.innerHTML = html
+  batchDetailOverlay.classList.add('is-open')
+  batchDetailOverlay.setAttribute('aria-hidden', 'false')
+  currentBatchDetailJob = job
+  if (modalCloseBtn) modalCloseBtn.focus()
+}
+
+function closeBatchDetailModal () {
+  if (!batchDetailOverlay) return
+  batchDetailOverlay.classList.remove('is-open')
+  batchDetailOverlay.setAttribute('aria-hidden', 'true')
+  currentBatchDetailJob = null
 }
 
 function clampInterval (value) {
@@ -274,6 +371,7 @@ async function fetchBatchJobs (targetOrg) {
   const res = await fetch(url)
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Failed to load batch jobs')
+  lastInstanceUrl = data.instanceUrl || null
   return data.jobs || []
 }
 
@@ -402,9 +500,27 @@ async function init () {
       searchInput._searchTimer = setTimeout(startPolling, 300)
     })
     jobsTable && jobsTable.querySelector('thead').addEventListener('click', onSort)
+    jobsTbody && jobsTbody.addEventListener('click', (e) => {
+      const trigger = e.target.closest('.batch-id-trigger')
+      if (!trigger) return
+      const jobId = trigger.getAttribute('data-job-id')
+      if (!jobId) return
+      const job = jobsCache.find((j) => j.id === jobId)
+      if (job) openBatchDetailModal(job)
+    })
+    modalCloseBtn && modalCloseBtn.addEventListener('click', closeBatchDetailModal)
+    batchDetailOverlay && batchDetailOverlay.addEventListener('click', (e) => {
+      if (e.target === batchDetailOverlay) closeBatchDetailModal()
+    })
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && batchDetailOverlay && batchDetailOverlay.classList.contains('is-open')) {
+        closeBatchDetailModal()
+      }
+    })
     showLocalTzCheckbox && showLocalTzCheckbox.addEventListener('change', () => {
       updateTimezoneDisplay()
       renderJobs(jobsCache)
+      if (currentBatchDetailJob) openBatchDetailModal(currentBatchDetailJob)
     })
     limitInput && limitInput.addEventListener('change', () => {
       limitInput.value = String(clampLimit(limitInput.value))
