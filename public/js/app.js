@@ -41,6 +41,11 @@ function setSecondaryControlsEnabled (enabled) {
   if (statusFilters) statusFilters.disabled = !enabled
   if (showLocalTzCheckbox) showLocalTzCheckbox.disabled = !enabled
   if (limitInput) limitInput.disabled = !enabled
+  if (themeToggle) themeToggle.disabled = !enabled
+}
+
+function setOrgSelectEnabled (enabled) {
+  if (orgSelect) orgSelect.disabled = !enabled
 }
 
 function getTimezoneOffsetString () {
@@ -303,6 +308,7 @@ async function pollOnce (targetOrg) {
 function startPolling () {
   const targetOrg = orgSelect.value && orgSelect.value.trim()
   if (!targetOrg) {
+    stopPolling()
     setStatus('Select an org')
     renderJobs([])
     return
@@ -355,6 +361,10 @@ async function init () {
   themeToggle && themeToggle.addEventListener('click', toggleTheme)
   updateTimezoneDisplay()
 
+  // While loading environments: disable all controls
+  setOrgSelectEnabled(false)
+  setSecondaryControlsEnabled(false)
+
   setStatus('Loading orgs…', 'loading')
   buildStatusCheckboxes()
   try {
@@ -367,6 +377,8 @@ async function init () {
       orgSelect.appendChild(opt)
     }
     setStatus('Select an org')
+    // Environments loaded: enable only the environment dropdown
+    setOrgSelectEnabled(true)
     setSecondaryControlsEnabled(false)
     orgSelect.addEventListener('change', () => {
       setSecondaryControlsEnabled(!!(orgSelect.value && orgSelect.value.trim()))
