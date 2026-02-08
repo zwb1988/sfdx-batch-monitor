@@ -388,8 +388,8 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  max-width: 640px;
-  width: 100%;
+  width: 80vw;
+  max-width: 80vw;
   max-height: calc(100vh - 2rem);
   display: flex;
   flex-direction: column;
