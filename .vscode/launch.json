@@ -1,0 +1,58 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Server: Express API",
+      "program": "${workspaceFolder}/server.js",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Client: Chrome (Vite)",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/client/src"
+    },
+    {
+      "type": "msedge",
+      "request": "launch",
+      "name": "Client: Edge (Vite)",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/client/src"
+    },
+    {
+      "type": "editor-browser",
+      "request": "launch",
+      "name": "Client: Integrated browser (Vite)",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/client/src"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Full stack: server + Vite + Chrome",
+      "configurations": ["Server: Express API", "Client: Chrome (Vite)"],
+      "preLaunchTask": "Vite dev server",
+      "stopAll": true
+    },
+    {
+      "name": "Full stack: server + Vite + Edge",
+      "configurations": ["Server: Express API", "Client: Edge (Vite)"],
+      "preLaunchTask": "Vite dev server",
+      "stopAll": true
+    },
+    {
+      "name": "Full stack: server + Vite + integrated browser",
+      "configurations": [
+        "Server: Express API",
+        "Client: Integrated browser (Vite)"
+      ],
+      "preLaunchTask": "Vite dev server",
+      "stopAll": true
+    }
+  ]
+}
