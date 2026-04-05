@@ -33,7 +33,7 @@ npm install
 
 ## Run (production)
 
-Build the React UI into `public/`, then start the server:
+Build the React UI into `dist/` (ignored by git), then start the server:
 
 ```bash
 npm run build
@@ -82,5 +82,5 @@ npm run lint
 ## Tech stack
 
 - **Backend:** Node.js, Express
-- **Frontend:** React, TypeScript, Vite, Zustand; styles from `public/css` (imported into the client build; themes via CSS custom properties)
+- **Frontend:** React, TypeScript, Vite, Zustand; global styles under `client/src/styles/` (themes via CSS custom properties)
 - **Data:** Salesforce CLI (`sf org list`, `sf data query`) with JSON output
