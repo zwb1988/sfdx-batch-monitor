@@ -855,6 +855,122 @@ body {
   vertical-align: middle;
 }
 
+#org-objects-table .org-objects-col-count {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+#org-objects-table .org-objects-col-name {
+  word-break: break-word;
+}
+
+#org-objects-table .org-objects-col-share {
+  min-width: 10rem;
+  vertical-align: middle;
+}
+
+.org-objects-disclaimer {
+  margin: 0 0 0.75rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.live-count-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.live-count-value {
+  min-width: 3rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.live-count-load-btn {
+  padding: 0.2rem 0.35rem;
+  font-size: 1rem;
+  line-height: 1;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.live-count-spinner {
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: live-count-spin 0.7s linear infinite;
+}
+
+@keyframes live-count-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.live-count-error {
+  flex: 1 1 100%;
+  font-size: 0.75rem;
+  color: var(--error);
+}
+
+#org-objects-table .org-objects-col-live-count {
+  min-width: 9rem;
+  vertical-align: middle;
+}
+
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0;
+}
+
+.pagination-status {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.pagination-btn {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.pagination-btn:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .limit-bar-cell {
   display: flex;
   align-items: center;

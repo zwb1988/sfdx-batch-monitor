@@ -4,12 +4,13 @@ import {
   type BatchTableSortKey,
   DEFAULT_LIMIT,
   DEFAULT_STATUSES,
+  type OrgObjectsSortKey,
   type ScheduleSortKey,
   type ScheduleTableSortKey,
   THEME_STORAGE_KEY
 } from '../utils/constants'
 import { clampInterval } from '../utils/filters'
-import type { DetailModalState, JobRecord, Org, OrgLimitRow, StatusVariant, TabId } from '../types'
+import type { DetailModalState, JobRecord, Org, OrgLimitRow, OrgObjectRow, StatusVariant, TabId } from '../types'
 
 function readInitialTheme (): 'dark' | 'light' {
   try {
@@ -37,16 +38,20 @@ export interface AppStore {
   requestInFlight: boolean
   scheduleRequestInFlight: boolean
   limitsRequestInFlight: boolean
+  objectsRequestInFlight: boolean
   lastRefreshedAt: string | null
   lastInstanceUrl: string | null
   jobs: JobRecord[]
   scheduledJobs: JobRecord[]
   orgLimits: OrgLimitRow[]
+  orgObjects: OrgObjectRow[]
 
   sortKey: BatchTableSortKey
   sortDir: 'asc' | 'desc'
   scheduleSortKey: ScheduleSortKey
   scheduleSortDir: 'asc' | 'desc'
+  orgObjectsSortKey: OrgObjectsSortKey
+  orgObjectsSortDir: 'asc' | 'desc'
 
   intervalSeconds: number
   jobIdFilter: string
@@ -74,14 +79,17 @@ export interface AppStore {
   setRequestInFlight: (v: boolean) => void
   setScheduleRequestInFlight: (v: boolean) => void
   setLimitsRequestInFlight: (v: boolean) => void
+  setObjectsRequestInFlight: (v: boolean) => void
   setLastRefreshedAt: (iso: string | null) => void
   setLastInstanceUrl: (url: string | null) => void
   setJobs: (jobs: JobRecord[]) => void
   setScheduledJobs: (jobs: JobRecord[]) => void
   setOrgLimits: (rows: OrgLimitRow[]) => void
+  setOrgObjects: (rows: OrgObjectRow[]) => void
 
   toggleSort: (key: BatchTableSortKey) => void
   toggleScheduleSort: (key: ScheduleTableSortKey) => void
+  toggleOrgObjectsSort: (key: OrgObjectsSortKey) => void
 
   setIntervalSeconds: (n: number) => void
   setJobIdFilter: (s: string) => void
@@ -116,16 +124,20 @@ export const useAppStore = create<AppStore>((set, get) => ({
   requestInFlight: false,
   scheduleRequestInFlight: false,
   limitsRequestInFlight: false,
+  objectsRequestInFlight: false,
   lastRefreshedAt: null,
   lastInstanceUrl: null,
   jobs: [],
   scheduledJobs: [],
   orgLimits: [],
+  orgObjects: [],
 
   sortKey: 'startedAt',
   sortDir: 'desc',
   scheduleSortKey: 'nextFireTime',
   scheduleSortDir: 'asc',
+  orgObjectsSortKey: 'count',
+  orgObjectsSortDir: 'desc',
 
   intervalSeconds: 10,
   jobIdFilter: '',
@@ -152,12 +164,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
         jobs: [],
         scheduledJobs: [],
         orgLimits: [],
+        orgObjects: [],
         lastRefreshedAt: null,
         statusMessage: 'Select an org',
         statusVariant: null
       })
     } else {
-      set({ selectedOrg: trimmed, orgLimits: [] })
+      set({ selectedOrg: trimmed, orgLimits: [], orgObjects: [] })
     }
   },
 
@@ -183,12 +196,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setRequestInFlight: (requestInFlight) => set({ requestInFlight }),
   setScheduleRequestInFlight: (scheduleRequestInFlight) => set({ scheduleRequestInFlight }),
   setLimitsRequestInFlight: (limitsRequestInFlight) => set({ limitsRequestInFlight }),
+  setObjectsRequestInFlight: (objectsRequestInFlight) => set({ objectsRequestInFlight }),
   setLastRefreshedAt: (lastRefreshedAt) => set({ lastRefreshedAt }),
   setLastInstanceUrl: (lastInstanceUrl) => set({ lastInstanceUrl }),
 
   setJobs: (jobs) => set({ jobs }),
 
   setOrgLimits: (orgLimits) => set({ orgLimits }),
+
+  setOrgObjects: (orgObjects) => set({ orgObjects }),
 
   setScheduledJobs: (scheduledJobs) =>
     set((s) => {
@@ -215,6 +231,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
         return { scheduleSortDir: s.scheduleSortDir === 'asc' ? 'desc' : 'asc' }
       }
       return { scheduleSortKey: key, scheduleSortDir: 'asc' }
+    }),
+
+  toggleOrgObjectsSort: (key) =>
+    set((s) => {
+      if (s.orgObjectsSortKey === key) {
+        return { orgObjectsSortDir: s.orgObjectsSortDir === 'asc' ? 'desc' : 'asc' }
+      }
+      return { orgObjectsSortKey: key, orgObjectsSortDir: 'asc' }
     }),
 
   setIntervalSeconds: (intervalSeconds) => set({ intervalSeconds: clampInterval(intervalSeconds) }),
@@ -248,6 +272,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       jobs: [],
       scheduledJobs: [],
       orgLimits: [],
+      orgObjects: [],
       lastRefreshedAt: null
     })
 }))

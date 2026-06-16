@@ -45,6 +45,25 @@ export function isScheduleTableSortKey (s: string): s is ScheduleTableSortKey {
   return (SCHEDULE_TABLE_SORT_KEYS as readonly string[]).includes(s)
 }
 
+/** Column keys for org objects table sorting. */
+export const ORG_OBJECTS_SORT_KEYS = ['name', 'kind', 'count', 'share'] as const
+export type OrgObjectsSortKey = (typeof ORG_OBJECTS_SORT_KEYS)[number]
+
+export function isOrgObjectsSortKey (s: string): s is OrgObjectsSortKey {
+  return (ORG_OBJECTS_SORT_KEYS as readonly string[]).includes(s)
+}
+
+export const ORG_OBJECTS_PAGE_SIZE = 100
+
+export const ORG_OBJECT_KIND_LABELS: Record<string, string> = {
+  standard: 'Standard',
+  custom: 'Custom',
+  'custom-metadata': 'Custom metadata',
+  'platform-event': 'Platform event',
+  external: 'External',
+  'big-object': 'Big object'
+}
+
 export const BATCH_DETAIL_LABELS: Record<string, string> = {
   id: 'Batch ID',
   apexClassName: 'Apex Class Name',

@@ -7,9 +7,11 @@ import { BatchMonitorPanel } from './features/batch-monitor/BatchMonitorPanel'
 import { DetailModal } from './features/modals/DetailModal'
 import { ScheduleStateHelpModal } from './features/modals/ScheduleStateHelpModal'
 import { OrgLimitsPanel } from './features/org-limits/OrgLimitsPanel'
+import { OrgObjectsPanel } from './features/org-objects/OrgObjectsPanel'
 import { SchedulePanel } from './features/schedule/SchedulePanel'
 import { useBatchPolling } from './hooks/useBatchPolling'
 import { useOrgLimitsPolling } from './hooks/useOrgLimitsPolling'
+import { useOrgObjectsInitialLoad } from './hooks/useOrgObjectsInitialLoad'
 import { useOrgs } from './hooks/useOrgs'
 import { useScheduledJobs } from './hooks/useScheduledJobs'
 import { useAppStore } from './stores/appStore'
@@ -20,6 +22,7 @@ export default function App (): JSX.Element {
   useOrgs()
   useBatchPolling()
   useOrgLimitsPolling()
+  useOrgObjectsInitialLoad()
   const { refreshScheduledJobs } = useScheduledJobs()
 
   const theme = useAppStore((s) => s.theme)
@@ -67,7 +70,7 @@ export default function App (): JSX.Element {
               })}
             </select>
           </div>
-          {activeTab !== 'batch-analysis' && activeTab !== 'batch-schedule' && (
+          {activeTab !== 'batch-analysis' && activeTab !== 'batch-schedule' && activeTab !== 'org-objects' && (
             <div className="control-group">
               <label htmlFor="interval-input">Refresh interval (seconds)</label>
               <input
@@ -143,6 +146,18 @@ export default function App (): JSX.Element {
           >
             Org limits
           </button>
+          <button
+            type="button"
+            id="tab-org-objects"
+            className="tab"
+            role="tab"
+            aria-selected={activeTab === 'org-objects'}
+            aria-controls="tab-panel-org-objects"
+            tabIndex={activeTab === 'org-objects' ? 0 : -1}
+            onClick={() => setActiveTab('org-objects')}
+          >
+            Org objects
+          </button>
         </div>
 
         {activeTab !== 'batch-analysis' && <StatusMessage />}
@@ -171,6 +186,7 @@ export default function App (): JSX.Element {
         <SchedulePanel refreshScheduledJobs={refreshScheduledJobs} />
         <BatchAnalysisPanel />
         <OrgLimitsPanel />
+        <OrgObjectsPanel />
       </main>
       <Footer />
       <DetailModal />

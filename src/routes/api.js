@@ -77,6 +77,47 @@ router.get('/scheduled-jobs', async (req, res, next) => {
   }
 })
 
+router.get('/org-objects/live-count', async (req, res, next) => {
+  const targetOrg = req.query.targetOrg
+  const sobject = req.query.sobject
+  if (!targetOrg || typeof targetOrg !== 'string' || !targetOrg.trim()) {
+    return res.status(400).json({ error: 'targetOrg is required' })
+  }
+  if (!sfCliService.validateTargetOrg(targetOrg)) {
+    return res.status(400).json({ error: 'Invalid targetOrg' })
+  }
+  if (!sobject || typeof sobject !== 'string' || !sobject.trim()) {
+    return res.status(400).json({ error: 'sobject is required' })
+  }
+  if (!sfCliService.validateSObjectName(sobject)) {
+    return res.status(400).json({ error: 'Invalid sobject name' })
+  }
+  try {
+    const count = await sfCliService.getSObjectLiveRecordCount(targetOrg, sobject)
+    res.json({ count })
+  } catch (err) {
+    err.statusCode = 500
+    next(err)
+  }
+})
+
+router.get('/org-objects', async (req, res, next) => {
+  const targetOrg = req.query.targetOrg
+  if (!targetOrg || typeof targetOrg !== 'string' || !targetOrg.trim()) {
+    return res.status(400).json({ error: 'targetOrg is required' })
+  }
+  if (!sfCliService.validateTargetOrg(targetOrg)) {
+    return res.status(400).json({ error: 'Invalid targetOrg' })
+  }
+  try {
+    const objects = await sfCliService.getOrgSObjects(targetOrg)
+    res.json({ objects })
+  } catch (err) {
+    err.statusCode = 500
+    next(err)
+  }
+})
+
 router.get('/org-limits', async (req, res, next) => {
   const targetOrg = req.query.targetOrg
   if (!targetOrg || typeof targetOrg !== 'string' || !targetOrg.trim()) {

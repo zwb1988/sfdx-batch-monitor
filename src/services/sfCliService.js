@@ -21,6 +21,8 @@ const DEFAULT_STATUSES = ['Processing', 'Preparing', 'Queued', 'Failed']
 
 const TARGET_ORG_REGEX = /^[a-zA-Z0-9_.@-]+$/
 const JOB_ID_REGEX = /^[a-zA-Z0-9]{15,18}$/
+/** Salesforce sObject API name (queryable objects). */
+const SOBJECT_NAME_REGEX = /^[A-Za-z][A-Za-z0-9_]*$/
 
 function validateTargetOrg (targetOrg) {
   if (typeof targetOrg !== 'string' || !targetOrg.trim()) return false
@@ -30,6 +32,11 @@ function validateTargetOrg (targetOrg) {
 function validateJobId (jobId) {
   if (!jobId || typeof jobId !== 'string') return false
   return JOB_ID_REGEX.test(jobId.trim())
+}
+
+function validateSObjectName (sobjectName) {
+  if (typeof sobjectName !== 'string' || !sobjectName.trim()) return false
+  return SOBJECT_NAME_REGEX.test(sobjectName.trim())
 }
 
 function escapeSoqlLike (str) {
@@ -430,6 +437,87 @@ function parseOrgLimitsResult (stdout) {
   return limits
 }
 
+function classifySObjectName (name) {
+  const n = typeof name === 'string' ? name.trim() : ''
+  if (!n) return null
+  if (n.endsWith('__c')) return { name: n, kind: 'custom' }
+  if (n.endsWith('__mdt')) return { name: n, kind: 'custom-metadata' }
+  if (n.endsWith('__e')) return { name: n, kind: 'platform-event' }
+  if (n.endsWith('__x')) return { name: n, kind: 'external' }
+  if (n.endsWith('__b')) return { name: n, kind: 'big-object' }
+  return { name: n, kind: 'standard' }
+}
+
+function parseSObjectRecordCountsResult (stdout) {
+  const data = parseSfJsonOutput(stdout, 'sf org list sobject record-counts')
+  const result = data.result
+  if (!Array.isArray(result)) return []
+  const objects = []
+  for (const entry of result) {
+    if (!entry || typeof entry !== 'object') continue
+    const name = entry.name != null ? String(entry.name).trim() : ''
+    const row = classifySObjectName(name)
+    if (!row) continue
+    const count = Number(entry.count)
+    objects.push({
+      ...row,
+      count: Number.isFinite(count) && count >= 0 ? count : 0
+    })
+  }
+  objects.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+  return objects
+}
+
+async function getOrgSObjects (targetOrg) {
+  if (!validateTargetOrg(targetOrg)) {
+    throw new Error('Invalid targetOrg')
+  }
+  const args = [
+    'org', 'list', 'sobject', 'record-counts',
+    '--target-org', targetOrg.trim(),
+    '--json'
+  ]
+  const { stdout, stderr } = await runSf(args).catch((err) => {
+    const raw = err.stderr || err.stdout || err.message
+    const msg = sanitizeSfError(String(raw))
+    throw new Error(`sf org list sobject record-counts failed: ${msg}`)
+  })
+  return parseSObjectRecordCountsResult(sfCliTextOutput(stdout, stderr))
+}
+
+function parseCountQueryResult (stdout) {
+  const data = parseSfJsonOutput(stdout, 'sf data query count')
+  const result = data.result || data
+  const totalSize = result.totalSize
+  if (typeof totalSize === 'number' && Number.isFinite(totalSize) && totalSize >= 0) {
+    return totalSize
+  }
+  throw new Error('COUNT() query did not return a valid totalSize')
+}
+
+async function getSObjectLiveRecordCount (targetOrg, sobjectName) {
+  if (!validateTargetOrg(targetOrg)) {
+    throw new Error('Invalid targetOrg')
+  }
+  const name = typeof sobjectName === 'string' ? sobjectName.trim() : ''
+  if (!validateSObjectName(name)) {
+    throw new Error('Invalid sobject name')
+  }
+  const soql = 'SELECT COUNT() FROM ' + name
+  const args = [
+    'data', 'query',
+    '--query', soql,
+    '--target-org', targetOrg.trim(),
+    '--json'
+  ]
+  const { stdout, stderr } = await runSf(args).catch((err) => {
+    const raw = err.stderr || err.stdout || err.message
+    const msg = sanitizeSfError(String(raw))
+    throw new Error(`sf data query failed: ${msg}`)
+  })
+  return parseCountQueryResult(sfCliTextOutput(stdout, stderr))
+}
+
 async function getOrgLimits (targetOrg) {
   if (!validateTargetOrg(targetOrg)) {
     throw new Error('Invalid targetOrg')
@@ -653,8 +741,11 @@ module.exports = {
   getBatchJobs,
   getScheduledApexCronTriggers,
   getOrgLimits,
+  getOrgSObjects,
+  getSObjectLiveRecordCount,
   getOrgInstanceUrl,
   getBatchJobAnalysis,
   validateTargetOrg,
-  validateJobId
+  validateJobId,
+  validateSObjectName
 }

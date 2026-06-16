@@ -7,7 +7,21 @@ export interface Org {
   username?: string
 }
 
-export type TabId = 'batch-monitor' | 'batch-schedule' | 'org-limits' | 'batch-analysis'
+export type TabId = 'batch-monitor' | 'batch-schedule' | 'org-limits' | 'org-objects' | 'batch-analysis'
+
+export type OrgObjectKind =
+  | 'standard'
+  | 'custom'
+  | 'custom-metadata'
+  | 'platform-event'
+  | 'external'
+  | 'big-object'
+
+export interface OrgObjectRow {
+  name: string
+  kind: OrgObjectKind
+  count: number
+}
 
 export interface OrgLimitRow {
   name: string
