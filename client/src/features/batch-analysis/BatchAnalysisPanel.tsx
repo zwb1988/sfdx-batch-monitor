@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type JSX } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type JSX } from 'react'
 import { fetchBatchAnalysis } from '../../services/api'
 import { useAppStore } from '../../stores/appStore'
 import type { BatchAnalysisPayload } from '../../types'
@@ -9,9 +9,19 @@ import {
   buildStartsPerHourForDay,
   buildTopApexClassesByHourForDay
 } from '../../utils/batchAnalysisBuckets'
+import {
+  buildConcurrencySeriesForDay,
+  buildExecutionDays,
+  buildGanttRowsForDay,
+  countExecutionsOverlappingDay,
+  filterExecutionsByClass,
+  listBatchClassesForDay
+} from '../../utils/batchAnalysisConcurrency'
 import { formatDate, formatDurationMs } from '../../utils/format'
 import {
+  BatchConcurrencyChart,
   BatchDailyVolumeChart,
+  BatchExecutionTimelineChart,
   BatchHeatmapChart,
   BatchHourlyLineChart
 } from './BatchAnalysisECharts'
@@ -28,10 +38,14 @@ export function BatchAnalysisPanel (): JSX.Element {
   const [payload, setPayload] = useState<BatchAnalysisPayload | null>(null)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [durationFilter, setDurationFilter] = useState('')
+  const [batchClassSearch, setBatchClassSearch] = useState('')
+  const [selectedBatchClasses, setSelectedBatchClasses] = useState<Set<string>>(() => new Set())
 
   const chartColors = useChartTheme()
   const handleSelectDay = useCallback((day: string) => {
     setSelectedDay(day)
+    setSelectedBatchClasses(new Set())
+    setBatchClassSearch('')
   }, [])
 
   const orgOk = !!selectedOrg.trim()
@@ -51,15 +65,38 @@ export function BatchAnalysisPanel (): JSX.Element {
 
   const startTimes = useMemo(() => payload?.startTimes ?? [], [payload])
   const jobStarts = useMemo(() => payload?.jobStarts ?? [], [payload])
+  const jobExecutions = useMemo(() => payload?.jobExecutions ?? [], [payload])
   const heatmap = useMemo(() => buildDayHourHeatmap(startTimes, chartZone), [startTimes, chartZone])
   const dailyVolume = useMemo(() => buildDailyVolume(startTimes, chartZone), [startTimes, chartZone])
+  const executionDays = useMemo(() => buildExecutionDays(jobExecutions, chartZone), [jobExecutions, chartZone])
+
+  const analysisDays = useMemo(() => {
+    const merged = new Set([...heatmap.days, ...executionDays])
+    return [...merged].sort((a, b) => a.localeCompare(b))
+  }, [heatmap.days, executionDays])
 
   const resolvedDay = useMemo(() => {
-    const days = heatmap.days
+    const days = analysisDays
     if (days.length === 0) return null
     if (selectedDay != null && days.includes(selectedDay)) return selectedDay
     return days[days.length - 1]
-  }, [heatmap.days, selectedDay])
+  }, [analysisDays, selectedDay])
+
+  const batchClassesOnDay = useMemo(() => {
+    if (resolvedDay == null) return []
+    return listBatchClassesForDay(jobExecutions, chartZone, resolvedDay)
+  }, [jobExecutions, chartZone, resolvedDay])
+
+  const filteredBatchClassOptions = useMemo(() => {
+    const q = batchClassSearch.trim().toLowerCase()
+    if (!q) return batchClassesOnDay
+    return batchClassesOnDay.filter((name) => name.toLowerCase().includes(q))
+  }, [batchClassesOnDay, batchClassSearch])
+
+  const filteredExecutions = useMemo(
+    () => filterExecutionsByClass(jobExecutions, selectedBatchClasses),
+    [jobExecutions, selectedBatchClasses]
+  )
 
   const hourlyForSelectedDay = useMemo(() => {
     if (resolvedDay == null) return Array.from({ length: 24 }, () => 0)
@@ -70,6 +107,25 @@ export function BatchAnalysisPanel (): JSX.Element {
     if (resolvedDay == null) return new Map()
     return buildTopApexClassesByHourForDay(jobStarts, chartZone, resolvedDay)
   }, [jobStarts, chartZone, resolvedDay])
+
+  const concurrencySeries = useMemo(() => {
+    if (resolvedDay == null) {
+      return { timestamps: [], counts: [], peak: 0, minutesAtLimit: 0, dayStart: 0, dayEnd: 0 }
+    }
+    return buildConcurrencySeriesForDay(filteredExecutions, chartZone, resolvedDay)
+  }, [filteredExecutions, chartZone, resolvedDay])
+
+  const jobsOnSelectedDay = useMemo(() => {
+    if (resolvedDay == null) return 0
+    return countExecutionsOverlappingDay(filteredExecutions, chartZone, resolvedDay)
+  }, [filteredExecutions, chartZone, resolvedDay])
+
+  const ganttRows = useMemo(() => {
+    if (resolvedDay == null) {
+      return { lanes: [], segments: [], totalExecutions: 0, dayStart: 0, dayEnd: 0 }
+    }
+    return buildGanttRowsForDay(filteredExecutions, chartZone, resolvedDay)
+  }, [filteredExecutions, chartZone, resolvedDay])
 
   const durationRows = useMemo(() => payload?.durationByClass ?? [], [payload])
   const filteredDurationRows = useMemo(() => {
@@ -89,6 +145,8 @@ export function BatchAnalysisPanel (): JSX.Element {
       .then((data) => {
         setPayload(data)
         setError(null)
+        setSelectedBatchClasses(new Set())
+        setBatchClassSearch('')
       })
       .catch((e: unknown) => {
         setPayload(null)
@@ -102,6 +160,19 @@ export function BatchAnalysisPanel (): JSX.Element {
   const summary = payload?.summary
 
   const zoneLabel = chartZone === 'utc' ? 'UTC' : 'Local'
+
+  function handleBatchClassFilterChange (e: ChangeEvent<HTMLSelectElement>): void {
+    const next = new Set(Array.from(e.target.selectedOptions, (opt) => opt.value))
+    setSelectedBatchClasses(next)
+  }
+
+  function selectAllBatchClasses (): void {
+    setSelectedBatchClasses(new Set(batchClassesOnDay))
+  }
+
+  function clearBatchClassFilter (): void {
+    setSelectedBatchClasses(new Set())
+  }
 
   return (
     <section
@@ -232,11 +303,15 @@ export function BatchAnalysisPanel (): JSX.Element {
                 <select
                   id="batch-analysis-day-select"
                   aria-label="Day for hourly line chart"
-                  disabled={heatmap.days.length === 0 || loading}
+                  disabled={analysisDays.length === 0 || loading}
                   value={resolvedDay ?? ''}
-                  onChange={(e) => setSelectedDay(e.target.value || null)}
+                  onChange={(e) => {
+                    const day = e.target.value
+                    if (day) handleSelectDay(day)
+                    else setSelectedDay(null)
+                  }}
                 >
-                  {heatmap.days.map((d) => (
+                  {analysisDays.map((d) => (
                     <option key={d} value={d}>
                       {d}
                     </option>
@@ -253,6 +328,126 @@ export function BatchAnalysisPanel (): JSX.Element {
                     apexByHour={apexClassesByHourForDay}
                   />
                 </div>
+              )}
+            </div>
+
+            <div className="batch-analysis-block">
+              <h3 className="batch-analysis-heading">Concurrent execution (one day)</h3>
+              <p className="batch-analysis-muted batch-analysis-chart-hint">
+                Plots each batch from <code>CreatedDate</code> (start) through <code>CompletedDate</code> (end).
+                Each row is one Apex batch class; multiple runs of the same class share that row. The timeline
+                shows the full 24-hour day. Use the horizontal slider below to zoom time; use the
+                vertical slider on the right to zoom and scroll batch classes (Shift + mouse wheel also works).
+              </p>
+              {jobExecutions.length === 0 && (
+                <p className="batch-analysis-muted batch-analysis-chart-hint" role="status">
+                  No jobs with both start and end times were returned. Overlap charts need completed execution
+                  intervals from the bulk export.
+                </p>
+              )}
+              {resolvedDay != null && jobExecutions.length > 0 && (
+                <>
+                  <section className="controls controls-row batch-analysis-batch-filter">
+                    <div className="control-group batch-analysis-multiselect-group">
+                      <label htmlFor="batch-class-filter-search">Filter batch classes</label>
+                      <input
+                        id="batch-class-filter-search"
+                        type="search"
+                        placeholder="Search class name"
+                        autoComplete="off"
+                        disabled={loading || batchClassesOnDay.length === 0}
+                        value={batchClassSearch}
+                        onChange={(e) => setBatchClassSearch(e.target.value)}
+                      />
+                    </div>
+                    <div className="control-group batch-analysis-multiselect-group">
+                      <label htmlFor="batch-class-filter">Compare batch classes</label>
+                      <select
+                        id="batch-class-filter"
+                        multiple
+                        size={Math.min(10, Math.max(4, filteredBatchClassOptions.length || 4))}
+                        className="batch-analysis-multiselect"
+                        aria-label="Select batch classes to compare on overlap charts"
+                        disabled={loading || batchClassesOnDay.length === 0}
+                        value={Array.from(selectedBatchClasses)}
+                        onChange={handleBatchClassFilterChange}
+                      >
+                        {filteredBatchClassOptions.map((name) => (
+                          <option key={name} value={name}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="batch-analysis-metric-hint">
+                        {selectedBatchClasses.size === 0
+                          ? 'Showing all batch classes on this day. Ctrl/Cmd+click to select a subset to compare.'
+                          : `Comparing ${selectedBatchClasses.size} of ${batchClassesOnDay.length} batch class${batchClassesOnDay.length === 1 ? '' : 'es'}.`}
+                      </p>
+                      <div className="batch-analysis-filter-actions">
+                        <button
+                          type="button"
+                          className="btn-batch-filter"
+                          disabled={loading || batchClassesOnDay.length === 0}
+                          onClick={selectAllBatchClasses}
+                        >
+                          Select all
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-batch-filter"
+                          disabled={loading || selectedBatchClasses.size === 0}
+                          onClick={clearBatchClassFilter}
+                        >
+                          Show all
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+                  <div className="batch-analysis-overlap-stats" aria-label="Overlap summary for selected day">
+                    <div className="batch-analysis-metric">
+                      <span className="batch-analysis-metric-label">Jobs running ({resolvedDay})</span>
+                      <span className="batch-analysis-metric-value">
+                        {jobsOnSelectedDay > 0 ? jobsOnSelectedDay.toLocaleString() : '—'}
+                      </span>
+                      <span className="batch-analysis-metric-hint">Batches active during this day (start → end)</span>
+                    </div>
+                    <div className="batch-analysis-metric">
+                      <span className="batch-analysis-metric-label">Peak concurrent</span>
+                      <span className="batch-analysis-metric-value">
+                        {concurrencySeries.peak > 0 ? concurrencySeries.peak.toLocaleString() : '—'}
+                      </span>
+                    </div>
+                    <div className="batch-analysis-metric">
+                      <span className="batch-analysis-metric-label">Time at limit (≥5)</span>
+                      <span className="batch-analysis-metric-value">
+                        {concurrencySeries.minutesAtLimit > 0
+                          ? formatDurationMs(concurrencySeries.minutesAtLimit * 60000)
+                          : '—'}
+                      </span>
+                      <span className="batch-analysis-metric-hint">1-minute buckets at or above Salesforce limit</span>
+                    </div>
+                  </div>
+                  <div className="batch-analysis-echart">
+                    <BatchConcurrencyChart
+                      series={concurrencySeries}
+                      dayLabel={resolvedDay}
+                      zoneLabel={zoneLabel}
+                      chartZone={chartZone}
+                      colors={chartColors}
+                      executions={filteredExecutions}
+                    />
+                  </div>
+                  <h4 className="batch-analysis-subheading">Execution timeline</h4>
+                  <div className="batch-analysis-echart batch-analysis-echart--tall">
+                    <BatchExecutionTimelineChart
+                      gantt={ganttRows}
+                      dayLabel={resolvedDay}
+                      zoneLabel={zoneLabel}
+                      chartZone={chartZone}
+                      colors={chartColors}
+                    />
+                  </div>
+                </>
               )}
             </div>
 

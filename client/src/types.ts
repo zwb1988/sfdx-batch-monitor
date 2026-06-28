@@ -58,11 +58,21 @@ export interface BatchJobStartEvent {
   apexClassName: string
 }
 
+export interface BatchJobExecution {
+  id: string | null
+  startedAt: string
+  completedAt: string
+  apexClassName: string
+  status: string
+}
+
 export interface BatchAnalysisPayload {
   summary: BatchAnalysisSummary
   startTimes: string[]
   /** Start time + Apex class per row (same order as bulk history); used for hourly tooltips. */
   jobStarts: BatchJobStartEvent[]
+  /** Jobs with measurable start and end times; used for overlap / concurrency charts. */
+  jobExecutions: BatchJobExecution[]
   durationByClass: DurationByClassRow[]
   failuresByClass: FailuresByClassRow[]
 }

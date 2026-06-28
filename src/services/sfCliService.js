@@ -552,16 +552,31 @@ function parseBulkExportCsvFile (filePath) {
 /** Bulk CSV uses dotted column names; normalizeBatchJob expects nested ApexClass. */
 function coerceBulkRowToSoqlRecordShape (row) {
   if (!row || typeof row !== 'object') return row
+  const out = { ...row }
   const dotted =
     row['ApexClass.Name'] ??
     row['apexClass.name']
-  if (dotted != null && String(dotted).trim() !== '' && !row.ApexClass) {
-    return {
-      ...row,
-      ApexClass: { Name: String(dotted) }
+  if (dotted != null && String(dotted).trim() !== '' && !out.ApexClass) {
+    out.ApexClass = { Name: String(dotted) }
+  }
+  const aliases = {
+    Id: ['Id', 'id', 'ID'],
+    CreatedDate: ['CreatedDate', 'createdDate', 'createddate', 'CREATEDDATE'],
+    CompletedDate: ['CompletedDate', 'completedDate', 'completeddate', 'COMPLETEDDATE'],
+    Status: ['Status', 'status', 'STATUS'],
+    JobType: ['JobType', 'jobType', 'jobtype']
+  }
+  for (const [canonical, keys] of Object.entries(aliases)) {
+    if (out[canonical] != null && String(out[canonical]).trim() !== '') continue
+    for (const key of keys) {
+      const val = row[key]
+      if (val != null && String(val).trim() !== '') {
+        out[canonical] = val
+        break
+      }
     }
   }
-  return row
+  return out
 }
 
 /**
@@ -631,6 +646,7 @@ function buildBatchJobAnalysisFromRecords (records) {
   let dateMax = null
   const startTimes = []
   const jobStarts = []
+  const jobExecutions = []
   const durationsAll = []
   const durationsByClass = new Map()
   const failuresByClass = new Map()
@@ -650,9 +666,25 @@ function buildBatchJobAnalysisFromRecords (records) {
       }
     }
 
-    const status = norm.status != null ? String(norm.status) : ''
+    const status = norm.status != null ? String(norm.status).trim() : ''
+    const completed = norm.completedAt || rec.CompletedDate
+    const startedRaw = norm.startedAt || rec.CreatedDate
+
+    if (startedRaw && completed) {
+      const dm = jobDurationMs(startedRaw, completed)
+      if (dm != null) {
+        jobExecutions.push({
+          id: norm.id != null ? String(norm.id) : null,
+          startedAt: String(startedRaw),
+          completedAt: String(completed),
+          apexClassName: className,
+          status: status || '—'
+        })
+      }
+    }
+
     if (BATCH_EXECUTE_TERMINAL_STATUSES.has(status)) {
-      const dm = jobDurationMs(norm.startedAt || rec.CreatedDate, norm.completedAt || rec.CompletedDate)
+      const dm = jobDurationMs(startedRaw, completed)
       if (dm != null) {
         durationsAll.push(dm)
       }
@@ -723,6 +755,7 @@ function buildBatchJobAnalysisFromRecords (records) {
     summary,
     startTimes,
     jobStarts,
+    jobExecutions,
     durationByClass,
     failuresByClass: failuresByClassList
   }

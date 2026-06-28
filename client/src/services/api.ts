@@ -145,6 +145,7 @@ export async function fetchBatchAnalysis (targetOrg: string): Promise<BatchAnaly
     summary: data.summary,
     startTimes: data.startTimes ?? [],
     jobStarts: Array.isArray(data.jobStarts) ? data.jobStarts : [],
+    jobExecutions: Array.isArray(data.jobExecutions) ? data.jobExecutions : [],
     durationByClass: data.durationByClass ?? [],
     failuresByClass: data.failuresByClass ?? []
   }
