@@ -10,7 +10,7 @@ import {
   THEME_STORAGE_KEY
 } from '../utils/constants'
 import { clampInterval } from '../utils/filters'
-import type { DetailModalState, JobRecord, Org, OrgLimitRow, OrgObjectRow, StatusVariant, TabId } from '../types'
+import type { CategoryId, DetailModalState, JobRecord, Org, OrgLimitRow, OrgObjectRow, StatusVariant, TabId } from '../types'
 
 function readInitialTheme (): 'dark' | 'light' {
   try {
@@ -31,6 +31,8 @@ export interface AppStore {
   orgsLoading: boolean
   selectedOrg: string
   activeTab: TabId
+  activeCategory: CategoryId
+  lastTabByCategory: Record<CategoryId, TabId>
   theme: 'dark' | 'light'
   statusMessage: string
   statusVariant: StatusVariant
@@ -71,6 +73,8 @@ export interface AppStore {
   setOrgsLoading: (v: boolean) => void
   setSelectedOrg: (org: string) => void
   setActiveTab: (tab: TabId) => void
+  setActiveCategory: (category: CategoryId) => void
+  selectTool: (category: CategoryId, tab: TabId) => void
   applyThemeToDocument: (theme: 'dark' | 'light') => void
   setTheme: (theme: 'dark' | 'light') => void
   toggleTheme: () => void
@@ -117,6 +121,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
   orgsLoading: true,
   selectedOrg: '',
   activeTab: 'batch-monitor',
+  activeCategory: 'monitoring',
+  lastTabByCategory: {
+    monitoring: 'batch-monitor',
+    'data-cloud': 'data-cloud-csv-ingest'
+  },
   theme: readInitialTheme(),
   statusMessage: '',
   statusVariant: null,
@@ -175,6 +184,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   setActiveTab: (activeTab) => set({ activeTab }),
+  setActiveCategory: (activeCategory) => set({ activeCategory }),
+  selectTool: (activeCategory, activeTab) =>
+    set((s) => ({
+      activeCategory,
+      activeTab,
+      lastTabByCategory: { ...s.lastTabByCategory, [activeCategory]: activeTab }
+    })),
 
   applyThemeToDocument: (theme) => {
     document.documentElement.setAttribute('data-theme', theme)

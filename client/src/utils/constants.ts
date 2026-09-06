@@ -109,6 +109,20 @@ export const SCHEDULE_DETAIL_ORDER = [
   'timesTriggered', 'timeZoneSidKey', 'apexClassName', 'apexClassId', 'id', 'cronJobDetailId', 'jobType'
 ] as const
 
+export const DATA_CLOUD_JOB_POLL_INTERVAL_MS = 5000
+
+export const DATA_CLOUD_INGEST_OPERATIONS = [
+  { value: 'upsert', label: 'Upsert' },
+  { value: 'delete', label: 'Delete' }
+] as const
+
+export const DATA_CLOUD_TERMINAL_JOB_STATES = new Set([
+  'JobComplete',
+  'Failed',
+  'Aborted',
+  'NotProcessed'
+])
+
 export const CRON_TRIGGER_STATE_REFERENCE = [
   { code: 'WAITING', description: 'The job is scheduled and idle until the next fire time.' },
   { code: 'ACQUIRED', description: 'The scheduler has selected the job and it is about to start running.' },

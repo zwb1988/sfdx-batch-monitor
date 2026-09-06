@@ -1,11 +1,14 @@
 const path = require('path')
 const express = require('express')
 const apiRoutes = require('./src/routes/api')
+const dataCloudRoutes = require('./src/routes/dataCloud')
 const { errorHandler } = require('./src/middleware/errorHandler')
 const { PORT } = require('./config/constants')
 
 const app = express()
+app.use(express.json({ limit: '1mb' }))
 app.use('/api', apiRoutes)
+app.use('/api', dataCloudRoutes)
 app.use(express.static(path.join(__dirname, 'dist')))
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'))

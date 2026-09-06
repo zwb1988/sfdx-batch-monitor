@@ -5,12 +5,13 @@ import { getErrorMessage } from '../utils/errorUtils'
 
 export function useScheduledJobs (): { refreshScheduledJobs: () => Promise<void> } {
   const activeTab = useAppStore((s) => s.activeTab)
+  const activeCategory = useAppStore((s) => s.activeCategory)
   const selectedOrg = useAppStore((s) => s.selectedOrg)
 
   const load = useCallback(async () => {
     const st = useAppStore.getState()
     const org = st.selectedOrg.trim()
-    if (!org || st.activeTab !== 'batch-schedule' || st.scheduleRequestInFlight) return
+    if (!org || st.activeCategory !== 'monitoring' || st.activeTab !== 'batch-schedule' || st.scheduleRequestInFlight) return
     st.setScheduleRequestInFlight(true)
     st.setStatus('Loading scheduled jobs…', 'loading')
     try {
@@ -29,9 +30,9 @@ export function useScheduledJobs (): { refreshScheduledJobs: () => Promise<void>
   }, [])
 
   useEffect(() => {
-    if (activeTab !== 'batch-schedule' || !selectedOrg.trim()) return
+    if (activeCategory !== 'monitoring' || activeTab !== 'batch-schedule' || !selectedOrg.trim()) return
     void load()
-  }, [activeTab, selectedOrg, load])
+  }, [activeCategory, activeTab, selectedOrg, load])
 
   return { refreshScheduledJobs: load }
 }

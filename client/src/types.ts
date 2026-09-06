@@ -7,7 +7,47 @@ export interface Org {
   username?: string
 }
 
-export type TabId = 'batch-monitor' | 'batch-schedule' | 'org-limits' | 'org-objects' | 'batch-analysis'
+export type TabId =
+  | 'batch-monitor'
+  | 'batch-schedule'
+  | 'org-limits'
+  | 'org-objects'
+  | 'batch-analysis'
+  | 'data-cloud-csv-ingest'
+
+export interface DataCloudIngestConnector {
+  id: string
+  name: string
+  label: string
+  connectionName?: string
+}
+
+export interface DataCloudIngestObject {
+  name: string
+  label: string
+}
+
+export interface DataCloudIngestJob {
+  id: string
+  operation: string
+  sourceName: string
+  object: string
+  state: string
+  createdById?: string | null
+  createdDate?: string | null
+  systemModstamp?: string | null
+  contentType?: string | null
+  apiVersion?: string | null
+  contentUrl?: string | null
+  retries?: number | null
+  totalProcessingTime?: number | null
+  errorMessage?: string | null
+}
+
+export type DataCloudIngestOperation = 'upsert' | 'delete'
+
+/** Top-level navigation groupings shown in the sidebar. */
+export type CategoryId = 'monitoring' | 'data-cloud'
 
 export type OrgObjectKind =
   | 'standard'

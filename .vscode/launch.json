@@ -36,19 +36,19 @@
     {
       "name": "Full stack: server + Vite + Chrome",
       "configurations": ["Server: Express API", "Client: Chrome (Vite)"],
-      "preLaunchTask": "Dev: full stack (server + Vite)",
+      "preLaunchTask": "Vite dev server",
       "stopAll": true
     },
     {
       "name": "Full stack: server + Vite + Edge",
       "configurations": ["Server: Express API", "Client: Edge (Vite)"],
-      "preLaunchTask": "Dev: full stack (server + Vite)",
+      "preLaunchTask": "Vite dev server",
       "stopAll": true
     },
     {
       "name": "Full stack: server + Vite + integrated browser",
       "configurations": ["Server: Express API", "Client: Integrated browser (Vite)"],
-      "preLaunchTask": "Dev: full stack (server + Vite)",
+      "preLaunchTask": "Vite dev server",
       "stopAll": true
     }
   ]

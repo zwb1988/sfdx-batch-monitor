@@ -1,7 +1,7 @@
 /** API client: orgs, batch jobs, scheduled jobs. */
 
 import { buildBatchJobsUrl, type BatchQueryParams } from '../utils/filters'
-import type { BatchAnalysisPayload, JobRecord, Org, OrgLimitRow, OrgObjectRow } from '../types'
+import type { BatchAnalysisPayload, DataCloudIngestConnector, DataCloudIngestJob, DataCloudIngestObject, DataCloudIngestOperation, JobRecord, Org, OrgLimitRow, OrgObjectRow } from '../types'
 
 interface OrgListJson {
   error?: string
@@ -72,8 +72,40 @@ async function readApiJson<T> (res: Response): Promise<T> {
   }
 }
 
-function apiError (data: { error?: string } | null | undefined, fallback: string): string {
-  return (data && typeof data.error === 'string' && data.error.trim()) ? data.error : fallback
+function apiError (data: { error?: unknown; error_description?: unknown; errorMessage?: unknown; message?: unknown; errors?: unknown } | null | undefined, fallback: string): string {
+  if (!data || typeof data !== 'object') return fallback
+  const parts: string[] = []
+  function push (value: unknown): void {
+    if (typeof value !== 'string') return
+    const text = value.trim()
+    if (text && !parts.includes(text)) parts.push(text)
+  }
+  push(data.error)
+  push(data.error_description)
+  push(data.errorMessage)
+  push(data.message)
+  if (Array.isArray(data.errors)) {
+    for (const item of data.errors) {
+      if (typeof item === 'string') push(item)
+      else if (item && typeof item === 'object') {
+        const row = item as { message?: unknown; errorCode?: unknown; error?: unknown }
+        push(row.errorCode)
+        push(row.message)
+        push(row.error)
+      }
+    }
+  }
+  return parts.length ? parts.join(' — ') : fallback
+}
+
+function requireApiOk (
+  res: Response,
+  data: { error?: unknown; error_description?: unknown; errorMessage?: unknown; message?: unknown; errors?: unknown } | null | undefined,
+  fallback: string
+): void {
+  const message = apiError(data, fallback)
+  const hasErrorField = !!(data && typeof data.error === 'string' && data.error.trim())
+  if (!res.ok || hasErrorField) throw new Error(message)
 }
 
 export async function fetchOrgs (): Promise<Org[]> {
@@ -149,4 +181,152 @@ export async function fetchBatchAnalysis (targetOrg: string): Promise<BatchAnaly
     durationByClass: data.durationByClass ?? [],
     failuresByClass: data.failuresByClass ?? []
   }
+}
+
+function dataCloudQuery (connectionId: string): string {
+  const params = new URLSearchParams()
+  params.set('connectionId', connectionId)
+  return params.toString()
+}
+
+interface DataCloudConnectionJson {
+  error?: string
+  connected?: boolean
+  connectionId?: string
+  expiresAt?: string
+}
+
+interface DataCloudConnectorsJson {
+  error?: string
+  connectors?: DataCloudIngestConnector[]
+}
+
+interface DataCloudObjectsJson {
+  error?: string
+  objects?: DataCloudIngestObject[]
+}
+
+interface DataCloudJobJson {
+  error?: string
+  job?: DataCloudIngestJob
+}
+
+interface DataCloudUploadJson {
+  error?: string
+  accepted?: boolean
+  uploaded?: Array<{ originalName: string; bytes: number }>
+}
+
+export async function connectDataCloud (
+  loginUrl: string,
+  clientId: string,
+  clientSecret: string
+): Promise<{ connectionId: string; expiresAt: string | null }> {
+  const res = await fetch('/api/data-cloud/connect', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ loginUrl, clientId, clientSecret })
+  })
+  const data = await readApiJson<DataCloudConnectionJson>(res)
+  requireApiOk(res, data, 'Failed to connect to Data Cloud')
+  if (!data.connected || !data.connectionId) {
+    throw new Error('Data Cloud authorization did not return a connection')
+  }
+  return { connectionId: data.connectionId, expiresAt: data.expiresAt ?? null }
+}
+
+export async function disconnectDataCloud (connectionId: string): Promise<void> {
+  const res = await fetch('/api/data-cloud/connect?' + dataCloudQuery(connectionId), {
+    method: 'DELETE'
+  })
+  const data = await readApiJson<DataCloudConnectionJson>(res)
+  requireApiOk(res, data, 'Failed to disconnect from Data Cloud')
+}
+
+export async function fetchDataCloudIngestConnectors (
+  connectionId: string
+): Promise<DataCloudIngestConnector[]> {
+  const res = await fetch('/api/data-cloud/ingest-connectors?' + dataCloudQuery(connectionId))
+  const data = await readApiJson<DataCloudConnectorsJson>(res)
+  requireApiOk(res, data, 'Failed to load Ingestion API connectors')
+  return data.connectors ?? []
+}
+
+export async function fetchDataCloudIngestObjects (
+  connectionId: string,
+  sourceName: string,
+  connectorId: string,
+  connectionName?: string
+): Promise<DataCloudIngestObject[]> {
+  const params = new URLSearchParams()
+  params.set('connectionId', connectionId)
+  params.set('sourceName', sourceName)
+  if (connectorId) params.set('connectorId', connectorId)
+  if (connectionName) params.set('connectionName', connectionName)
+  const res = await fetch('/api/data-cloud/ingest-objects?' + params.toString())
+  const data = await readApiJson<DataCloudObjectsJson>(res)
+  requireApiOk(res, data, 'Failed to load Ingestion API objects')
+  return data.objects ?? []
+}
+
+export async function createDataCloudIngestJob (
+  connectionId: string,
+  body: { sourceName: string; object: string; operation: DataCloudIngestOperation }
+): Promise<DataCloudIngestJob> {
+  const res = await fetch('/api/data-cloud/ingest-jobs?' + dataCloudQuery(connectionId), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  const data = await readApiJson<DataCloudJobJson>(res)
+  requireApiOk(res, data, 'Failed to create ingest job')
+  if (!data.job?.id) throw new Error('Create job response did not include a job id')
+  return data.job
+}
+
+export async function uploadDataCloudIngestFiles (
+  connectionId: string,
+  jobId: string,
+  files: File[]
+): Promise<void> {
+  const form = new FormData()
+  for (const file of files) form.append('files', file)
+  const res = await fetch(
+    '/api/data-cloud/ingest-jobs/' + encodeURIComponent(jobId) + '/batches?' + dataCloudQuery(connectionId),
+    { method: 'PUT', body: form }
+  )
+  const data = await readApiJson<DataCloudUploadJson>(res)
+  requireApiOk(res, data, 'Failed to upload CSV files')
+}
+
+export async function completeDataCloudIngestJob (
+  connectionId: string,
+  jobId: string
+): Promise<DataCloudIngestJob> {
+  const res = await fetch(
+    '/api/data-cloud/ingest-jobs/' + encodeURIComponent(jobId) + '?' + dataCloudQuery(connectionId),
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state: 'UploadComplete' })
+    }
+  )
+  const data = await readApiJson<DataCloudJobJson>(res)
+  requireApiOk(res, data, 'Failed to complete ingest job')
+  if (!data.job) throw new Error('Complete job response did not include job info')
+  return data.job
+}
+
+export async function fetchDataCloudIngestJob (
+  connectionId: string,
+  jobId: string
+): Promise<DataCloudIngestJob> {
+  const params = new URLSearchParams()
+  params.set('connectionId', connectionId)
+  params.set('jobId', jobId)
+  const res = await fetch('/api/data-cloud/ingest-jobs?' + params.toString())
+  const data = await readApiJson<DataCloudJobJson>(res)
+  requireApiOk(res, data, 'Failed to load ingest job')
+  if (!data.job) throw new Error('Job info response did not include a job')
+  return data.job
 }

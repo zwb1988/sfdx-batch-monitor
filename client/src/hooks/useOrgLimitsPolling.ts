@@ -7,10 +7,11 @@ import { clampInterval } from '../utils/filters'
 export function useOrgLimitsPolling (): void {
   const selectedOrg = useAppStore((s) => s.selectedOrg)
   const activeTab = useAppStore((s) => s.activeTab)
+  const activeCategory = useAppStore((s) => s.activeCategory)
   const intervalSeconds = useAppStore((s) => s.intervalSeconds)
 
   useEffect(() => {
-    if (!selectedOrg || activeTab !== 'org-limits') return
+    if (!selectedOrg || activeCategory !== 'monitoring' || activeTab !== 'org-limits') return
 
     const intervalMs = clampInterval(intervalSeconds) * 1000
     let cancelled = false
@@ -28,5 +29,5 @@ export function useOrgLimitsPolling (): void {
       cancelled = true
       if (timerId != null) clearInterval(timerId)
     }
-  }, [selectedOrg, activeTab, intervalSeconds])
+  }, [selectedOrg, activeCategory, activeTab, intervalSeconds])
 }

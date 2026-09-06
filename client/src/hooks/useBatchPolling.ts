@@ -7,6 +7,7 @@ import { clampInterval } from '../utils/filters'
 export function useBatchPolling (): void {
   const selectedOrg = useAppStore((s) => s.selectedOrg)
   const activeTab = useAppStore((s) => s.activeTab)
+  const activeCategory = useAppStore((s) => s.activeCategory)
   const intervalSeconds = useAppStore((s) => s.intervalSeconds)
   const jobIdFilter = useAppStore((s) => s.jobIdFilter)
   const searchQuery = useAppStore((s) => s.searchQuery)
@@ -16,7 +17,7 @@ export function useBatchPolling (): void {
   const statusesKey = selectedStatuses.join(',')
 
   useEffect(() => {
-    if (!selectedOrg || activeTab !== 'batch-monitor') return
+    if (!selectedOrg || activeCategory !== 'monitoring' || activeTab !== 'batch-monitor') return
 
     const intervalMs = clampInterval(intervalSeconds) * 1000
     let cancelled = false
@@ -34,5 +35,5 @@ export function useBatchPolling (): void {
       cancelled = true
       if (timerId != null) clearInterval(timerId)
     }
-  }, [selectedOrg, activeTab, intervalSeconds, jobIdFilter, searchQuery, limit, statusesKey])
+  }, [selectedOrg, activeCategory, activeTab, intervalSeconds, jobIdFilter, searchQuery, limit, statusesKey])
 }

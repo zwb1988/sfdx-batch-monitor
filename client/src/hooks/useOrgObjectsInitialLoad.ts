@@ -6,9 +6,10 @@ import { useAppStore } from '../stores/appStore'
 export function useOrgObjectsInitialLoad (): void {
   const selectedOrg = useAppStore((s) => s.selectedOrg)
   const activeTab = useAppStore((s) => s.activeTab)
+  const activeCategory = useAppStore((s) => s.activeCategory)
 
   useEffect(() => {
-    if (!selectedOrg || activeTab !== 'org-objects') return
+    if (!selectedOrg || activeCategory !== 'monitoring' || activeTab !== 'org-objects') return
     void fetchOrgObjectsForStore(selectedOrg)
-  }, [selectedOrg, activeTab])
+  }, [selectedOrg, activeCategory, activeTab])
 }
