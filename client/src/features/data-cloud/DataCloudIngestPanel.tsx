@@ -130,6 +130,14 @@ export function DataCloudIngestPanel (): JSX.Element {
   const isMonitoring = connected && jobIsActive && !busy
   const showJobLookup = !busy && !isMonitoring
   const canMonitorJob = connected && !lookingUpJob && !!jobIdInput.trim()
+  const hasIngestState = connected ||
+    !!clientId.trim() ||
+    !!clientSecret ||
+    !!sourceName ||
+    files.length > 0 ||
+    !!job ||
+    log.length > 0 ||
+    !!jobIdInput.trim()
 
   function appendLog (line: string): void {
     setLog((previous) => [...previous, line])
@@ -141,13 +149,14 @@ export function DataCloudIngestPanel (): JSX.Element {
   }, [log])
 
   useEffect(() => {
+    if (!hasIngestState) return
     function onBeforeUnload (event: BeforeUnloadEvent): void {
       event.preventDefault()
       event.returnValue = ''
     }
     window.addEventListener('beforeunload', onBeforeUnload)
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
-  }, [])
+  }, [hasIngestState])
 
   async function onConnect (): Promise<void> {
     if (!canConnect) return

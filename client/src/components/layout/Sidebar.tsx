@@ -1,8 +1,7 @@
 import { useState, type JSX } from 'react'
 import { NAV_CATEGORIES, type NavCategory } from '../../config/navigation'
-import { LeaveTabModal } from '../../features/modals/LeaveTabModal'
 import { useAppStore } from '../../stores/appStore'
-import type { CategoryId, TabId } from '../../types'
+import type { CategoryId } from '../../types'
 import { DataCloudIcon } from '../ui/DataCloudIcon'
 import { MonitoringIcon } from '../ui/MonitoringIcon'
 
@@ -27,16 +26,6 @@ export function Sidebar (): JSX.Element {
   const selectTool = useAppStore((s) => s.selectTool)
 
   const [expanded, setExpanded] = useState<Record<CategoryId, boolean>>(() => initialExpanded(activeCategory))
-  const [pendingNav, setPendingNav] = useState<{ category: CategoryId, tab: TabId, expand: boolean } | null>(null)
-
-  function trySelectTool (category: CategoryId, tab: TabId, expand = false): void {
-    if (activeTab === 'data-cloud-csv-ingest' && tab !== 'data-cloud-csv-ingest') {
-      setPendingNav({ category, tab, expand })
-      return
-    }
-    selectTool(category, tab)
-    if (expand) setExpanded((prev) => ({ ...prev, [category]: true }))
-  }
 
   function onCategoryClick (category: NavCategory): void {
     const hasTools = category.tools.length > 0
@@ -55,7 +44,8 @@ export function Sidebar (): JSX.Element {
       return
     }
 
-    trySelectTool(category.id, tab, true)
+    selectTool(category.id, tab)
+    setExpanded((prev) => ({ ...prev, [category.id]: true }))
   }
 
   return (
@@ -99,7 +89,7 @@ export function Sidebar (): JSX.Element {
                           id={'tab-' + tool.id}
                           className={'sidebar-tool' + (isToolActive ? ' is-active' : '')}
                           aria-current={isToolActive ? 'page' : undefined}
-                          onClick={() => trySelectTool(category.id, tool.id)}
+                          onClick={() => selectTool(category.id, tool.id)}
                         >
                           {tool.label}
                         </button>
@@ -112,19 +102,6 @@ export function Sidebar (): JSX.Element {
           </div>
         )
       })}
-      <LeaveTabModal
-        open={pendingNav != null}
-        onCancel={() => setPendingNav(null)}
-        onConfirm={() => {
-          if (pendingNav) {
-            selectTool(pendingNav.category, pendingNav.tab)
-            if (pendingNav.expand) {
-              setExpanded((prev) => ({ ...prev, [pendingNav.category]: true }))
-            }
-          }
-          setPendingNav(null)
-        }}
-      />
     </nav>
   )
 }

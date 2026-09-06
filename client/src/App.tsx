@@ -135,9 +135,7 @@ export default function App (): JSX.Element {
               </>
             )}
 
-            {activeCategory === 'data-cloud' && (
-              <DataCloudIngestPanel />
-            )}
+            <DataCloudIngestPanel />
           </main>
         </div>
       </div>

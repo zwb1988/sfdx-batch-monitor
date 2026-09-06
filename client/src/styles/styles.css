@@ -808,19 +808,6 @@ body {
   max-width: min(32rem, 92vw);
 }
 
-.leave-tab-message {
-  margin: 0;
-  font-size: 0.9375rem;
-  line-height: 1.5;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 1.25rem;
-}
-
 .modal-header {
   display: flex;
   align-items: center;
