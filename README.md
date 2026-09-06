@@ -1,27 +1,43 @@
 # Salesforce Monitor
 
-A Node.js web app that monitors Salesforce Batch Apex and scheduled Apex jobs using the Salesforce CLI (`sf`). It lists your authenticated orgs, lets you pick an environment, and shows live-updating tables for batch job details (progress, status, filters) and scheduled cron triggers.
+A Node.js web app for Salesforce org monitoring and Data Cloud CSV ingest. Monitoring tools use the Salesforce CLI (`sf`) against orgs you already authenticated. Data Cloud CSV ingest uses a connected app (client-credentials flow) and talks to Data Cloud APIs from this local server.
+
+The UI is a sidebar of tools under **Monitoring** and **Data Cloud**, with live-updating tables, charts, and a light/dark theme.
 
 ## What it does
 
-- **List orgs** — Loads environments from `sf org list` so you can choose which org to monitor.
-- **Query batch jobs** — Uses `sf data query` to fetch AsyncApexJob records (BatchApex) for the selected org.
-- **Scheduled Apex** — **Batch schedule** tab lists CronTrigger rows (scheduled jobs) and enriches Apex class names from AsyncApexJob where available.
-- **Org limits** — **Org limits** tab calls `sf force limits api display` for the selected org and shows API limits with consumption bars; it uses the same refresh interval and status line pattern as the batch monitor.
-- **Live tables** — Batch tab: Batch ID, Apex Class name, Job Type, Job Items Processed, Status, Total Job Items, **Progress** (circular % ring), Started, and Completed.
-- **Filters** — Filter by status (Queued, Preparing, Processing, Completed, Failed, Aborted, Holding), optional Job ID, and search by Apex class name.
-- **Auto-refresh** — Configurable refresh interval (minimum 1 second); shows “Refresh every X second(s)” and last refreshed date/time.
-- **Refresh now** — Button to trigger an immediate refresh without waiting for the next interval.
-- **Light / dark theme** — Theme switcher in the header; preference is saved in the browser.
+### Monitoring (Salesforce CLI)
 
-All other controls (interval, Job ID, search, status filters, Refresh now) are disabled until you select an environment.
+Pick an authenticated org in the **Environment** dropdown. Until an org is selected, monitoring controls stay disabled.
+
+- **Batch monitor** — Queries `AsyncApexJob` (Batch Apex) via `sf data query`. Columns include Batch ID, Apex class, job type, items processed, status, total items, progress ring, started, and completed. Filter by status, optional Job ID, and Apex class search. Auto-refresh uses the interval in the header. Export the current table as CSV.
+- **Batch schedule** — Lists `CronTrigger` scheduled jobs and enriches Apex class names from `AsyncApexJob` where available. Search by name or Apex class. Export as CSV. Does not use the global refresh interval.
+- **Batch analysis** — On demand (`Analyze Batches`), exports all matching `AsyncApexJob` rows with Bulk API 2.0 (`sf data export bulk` to a temp CSV) and charts them locally: daily volume, day/hour heatmap, hourly starts, concurrency, and an execution timeline. Salesforce often retains only recent history. This tool does not use the global polling interval or status line.
+- **Org limits** — Runs `sf force limits api display` and shows API limits with consumption bars. Uses the same refresh interval and status line as batch monitor.
+- **Org objects** — Lists org sObjects with cached record counts (Salesforce updates those counts on its own schedule; they may be missing or stale). Search by API name, filter by type, and optionally fetch a live `COUNT()` for a row. Does not use the global refresh interval.
+
+Click a batch or schedule row for a detail modal. Click column headers to sort.
+
+### Data Cloud
+
+- **CSV ingest** — Connect with a connected app’s client ID/secret (OAuth client credentials). Credentials go only to this local server and are not stored in the browser or project files. Choose an Ingestion API connector and object, pick upsert or delete, upload one or more CSV files, run the job, and watch job status until it completes.
+
+CSV ingest does not use the org dropdown; it is a separate Data Cloud connection.
+
+### Shared UI
+
+- **Sidebar** — Categories and tools (Monitoring vs Data Cloud).
+- **Auto-refresh** — Configurable interval (minimum 1 second) for batch monitor and org limits; last refreshed time is shown in the status line.
+- **Refresh now** — Immediate refresh on tools that poll or load on demand.
+- **Light / dark theme** — Header switcher; preference is saved in the browser.
 
 ## Prerequisites
 
-- **Node.js** 20 or newer
+- **Node.js** 18 or newer (20+ recommended)
 - **Salesforce CLI** installed and on your PATH as `sf`  
   - Install: [Salesforce CLI](https://developer.salesforce.com/tools/sfdxcli)
-- At least one org authenticated (e.g. `sf org login web` or `sf login org`)
+- For **Monitoring**: at least one org authenticated (e.g. `sf org login web`)
+- For **CSV ingest**: a Data Cloud connected app that allows the client-credentials flow, plus Ingestion API connectors/objects already set up in the org
 
 ## Setup
 
@@ -40,7 +56,7 @@ npm run build
 npm start
 ```
 
-Then open **http://localhost:3000** in your browser (or the port shown in the console). You can override the port with the `PORT` environment variable:
+Then open **http://localhost:3000** in the browser (or the port shown in the console). Override the port with `PORT`:
 
 ```bash
 PORT=4000 npm start
@@ -58,13 +74,12 @@ Open **http://localhost:5173** so API calls go through the Vite proxy. Ensure no
 
 ## Usage
 
-1. **Select an environment** — Choose an org from the dropdown (populated from `sf org list`). Other controls stay disabled until you select one.
-2. **Set refresh interval** — Enter the number of seconds between automatic refreshes (minimum 1).
-3. **Optional filters** — Use Job ID to monitor a single job, and/or search by Apex class name. Check/uncheck statuses to filter by job status.
-4. **Refresh now** — Click the ↻ button to refresh the table immediately.
-5. **Theme** — Use the ☀/🌙 button in the header to switch between light and dark theme; the choice is remembered.
-
-The table sorts by the column headers (click to toggle ascending/descending). Progress is shown as a green circular ring with a percentage when job items data is available.
+1. Choose a category and tool in the sidebar.
+2. For Monitoring tools, select an **Environment**. Set the refresh interval where it appears (batch monitor and org limits).
+3. Use tool-specific filters, search, refresh, and CSV export as needed.
+4. For **Batch analysis**, click **Analyze Batches** after selecting an org (the bulk export can take a while on large history).
+5. For **CSV ingest**, connect with login URL / client ID / client secret, then select connector, object, operation, and CSV files.
+6. Toggle theme with the ☀/🌙 button in the header.
 
 ## Lint
 
@@ -77,10 +92,10 @@ npm run lint
 ## Configuration
 
 - **Port** — `PORT` (default: 3000)
-- **SF CLI** — Timeout and max buffer for `sf` commands are set in `config/constants.js` (e.g. `SF_CLI_TIMEOUT_MS`, `SF_CLI_MAX_BUFFER`)
+- **SF CLI and Data Cloud** — Timeouts, SOQL limits, bulk-export caps, and CSV upload limits are in `config/constants.js` (e.g. `SF_CLI_TIMEOUT_MS`, `SF_CLI_MAX_BUFFER`, `BATCH_ANALYSIS_MAX_TOTAL_ROWS`, `DATA_CLOUD_MAX_CSV_BYTES`)
 
 ## Tech stack
 
-- **Backend:** Node.js, Express
-- **Frontend:** React, TypeScript, Vite, Zustand; global styles under `client/src/styles/` (themes via CSS custom properties)
-- **Data:** Salesforce CLI (`sf org list`, `sf data query`) with JSON output
+- **Backend:** Node.js, Express; Salesforce CLI for monitoring; Data Cloud Connect/Ingest APIs for CSV ingest
+- **Frontend:** React, TypeScript, Vite, Zustand, ECharts; global styles under `client/src/styles/` (themes via CSS custom properties)
+- **Data:** `sf org list`, `sf data query`, `sf data export bulk`, `sf force limits api display`, plus Data Cloud ingest job APIs
